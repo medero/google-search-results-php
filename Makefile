@@ -14,7 +14,7 @@ release:
 	 -d'{"repository":{"url":"$(url)"}}'
 
 example:
-	php composer.phar run-script test_example
+	php composer.phar run-script example
 
 # Lint PHP files
 lint:

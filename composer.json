@@ -42,22 +42,23 @@
         "issues": "http://github.com/serpapi/google-search-results-php/issues"
     },
     "require": {
-        "php": "^5.5 || ^7.0 || ^8.0",
+        "php": "^7.0 || ^8.0",
         "ext-curl": "*",
         "ext-json": "*"
     },
     "require-dev": {
-        "php": "^5.5 || ^7.0 || ^8.0",
-        "phpunit/phpunit": "^9.3"
+        "php": "^7.0 || ^8.0",
+        "phpunit/phpunit": "^9.3",
+        "phpstan/phpstan": "^1.10"
     },
     "autoload": {
-        "files": [
-            "restclient.php",
-            "google-search-results.php"
-        ]
+        "psr-4": {
+            "SerpApi\\": "src/SerpApi",
+            "TCDent\\": "src/TCDent"
+        }
     },
     "scripts": {
         "test": "phpunit test/GoogleSearchTest.php",
-        "example": "phpunit test/example_test.php"
+        "example": "phpunit test/ExampleTest.php"
     }
 }
