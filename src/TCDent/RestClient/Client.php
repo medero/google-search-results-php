@@ -15,7 +15,7 @@ class Client implements \Iterator, \ArrayAccess
     public $options;
     public $handle; // cURL resource handle.
     public $url;
-
+    
     // Populated after execution:
     public $response; // Response body.
     public $headers; // Parsed reponse header object.
@@ -176,9 +176,9 @@ class Client implements \Iterator, \ArrayAccess
         if(count($client->options['headers']) || count($headers)) {
             $curlopt[CURLOPT_HTTPHEADER] = [];
             $headers = array_merge($client->options['headers'], $headers);
-            foreach($headers as $key => $values) {
-                foreach(is_array($values) ? $values : [$values] as $value) {
-                    $curlopt[CURLOPT_HTTPHEADER][] = sprintf("%s:%s", $key, $value);
+            foreach($headers as $key => $values){
+                foreach(is_array($values)? $values : [$values] as $value){
+                    $curlopt[CURLOPT_HTTPHEADER][] = sprintf("%s: %s", $key, $value);
                 }
             }
         }
@@ -218,12 +218,11 @@ class Client implements \Iterator, \ArrayAccess
             $client->url .= strpos($client->url, '?') ? '&' : '?';
             $client->url .= $parameters_string;
         }
-
-        if($client->options['base_url']) {
-            if($client->url[0] !== '/' && substr($client->options['base_url'], -1) !== '/') {
-                $client->url = '/' . $client->url;
-            }
-            $client->url = $client->options['base_url'] . $client->url;
+        
+        if($client->options['base_url']){
+            $client->url = sprintf("%s/%s",
+                rtrim((string) $client->options['base_url'], '/'), 
+                ltrim((string) $client->url, '/'));
         }
         $curlopt[CURLOPT_URL] = $client->url;
 
@@ -234,8 +233,10 @@ class Client implements \Iterator, \ArrayAccess
             }
         }
         curl_setopt_array($client->handle, $curlopt);
-
-        $client->parse_response(curl_exec($client->handle));
+        
+        $response = curl_exec($client->handle);
+        if($response !== FALSE)
+            $client->parse_response($response);
         $client->info = (object) curl_getinfo($client->handle);
         $client->error = curl_error($client->handle);
 
@@ -276,13 +277,34 @@ class Client implements \Iterator, \ArrayAccess
         $this->headers = (object) $headers;
         $this->response = strtok("");
     }
-
-    public function get_response_format(): string
-    {
-        if(!$this->response) {
-            throw new ClientException(
-                "A response must exist before it can be decoded."
-            );
+    
+    public function get_response_format() : string {
+        if(!$this->response)
+            throw new RestClientException(
+                "A response must exist before it can be decoded.");
+        
+        // User-defined format. 
+        if(!empty($this->options['format']))
+            return $this->options['format'];
+        
+        // Extract format from response content-type header. 
+        if(!empty($this->headers->content_type))
+        if(preg_match($this->options['format_regex'], $this->headers->content_type, $matches))
+            return $matches[2];
+        
+        throw new RestClientException(
+            "Response format could not be determined.");
+    }
+    
+    public function decode_response(){
+        if(empty($this->decoded_response)){
+            $format = $this->get_response_format();
+            if(!array_key_exists($format, $this->options['decoders']))
+                throw new RestClientException("'{$format}' is not a supported ".
+                    "format, register a decoder to handle this response.");
+            
+            $this->decoded_response = call_user_func(
+                $this->options['decoders'][$format], $this->response);
         }
 
         // User-defined format.
