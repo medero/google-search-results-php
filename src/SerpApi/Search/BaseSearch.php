@@ -17,7 +17,7 @@ class BaseSearch
     protected string $engine;
     protected GuzzleClient $client;
 
-    public function __construct(string $api_key = null, string $engine = 'google')
+    public function __construct(string $api_key = '', string $engine = 'google')
     {
         if (!$engine) {
             throw new SearchException("engine must be defined");
@@ -35,7 +35,7 @@ class BaseSearch
             'headers' => [
                 'User-Agent' => 'google-search-results-php/1.3.0',
             ],
-            'verify' => false, // Disable SSL verification
+            'verify' => false,
         ]);
     }
 

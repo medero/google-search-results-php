@@ -11,6 +11,7 @@ use SerpApi\Search\YandexSearch;
 use SerpApi\Search\EbaySearch;
 use SerpApi\Search\YoutubeSearch;
 use SerpApi\Search\BaseSearch;
+use SerpApi\Search\SearchException;
 
 class GoogleSearchTest extends TestCase
 {
@@ -147,5 +148,65 @@ class GoogleSearchTest extends TestCase
         $client = new GoogleSearch($this->API_KEY);
         $response = $client->search("json", $this->QUERY);
         $this->assertGreaterThan(5, count($response->organic_results));
+    }
+
+    public function test_invalid_api_key()
+    {
+        $client = new GoogleSearch("invalid_api_key");
+        $this->expectException(SearchException::class);
+        $client->get_json($this->QUERY);
+    }
+
+    public function test_empty_query()
+    {
+        $client = new GoogleSearch($this->API_KEY);
+        $this->expectException(SearchException::class);
+        $client->get_json([]);
+    }
+
+    public function test_invalid_query_parameters()
+    {
+        $client = new GoogleSearch($this->API_KEY);
+        $this->expectException(SearchException::class);
+        $invalidQuery = [
+            'invalid_param' => 'value'
+        ];
+        $response = $client->get_json($invalidQuery);
+    }
+
+    public function test_html_response_format()
+    {
+        $client = new GoogleSearch($this->API_KEY);
+        $response = $client->get_html($this->QUERY);
+        $this->assertStringContainsString('<html', $response);
+        $this->assertStringContainsString('</html>', $response);
+    }
+
+    public function test_invalid_search_archive_id()
+    {
+        $client = new GoogleSearch($this->API_KEY);
+        $invalidSearchId = "invalid_id";
+        $this->expectException(SearchException::class);
+        $client->get_search_archive($invalidSearchId);
+    }
+
+    public function test_missing_engine_parameter()
+    {
+        $this->expectException(SearchException::class);
+        $client = new BaseSearch($this->API_KEY, '');
+    }
+
+    public function test_non_200_http_status_code()
+    {
+        $client = $this->getMockBuilder(GoogleSearch::class)
+                    ->setConstructorArgs([$this->API_KEY])
+                    ->onlyMethods(['query'])
+                    ->getMock();
+
+        $client->method('query')
+            ->will($this->throwException(new SearchException('404 Not Found')));
+
+        $this->expectException(SearchException::class);
+        $client->get_json($this->QUERY);
     }
 }
